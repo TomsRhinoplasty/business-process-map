@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Business Process Map with Role Labels & Legend</title>
+  <title>Business Process Map with Hierarchical IDs, Role Labels & Expand/Collapse</title>
   <style>
     /* Full window with no scrollbars, black background */
     html, body {
@@ -42,6 +42,11 @@
       text-anchor: middle;
       pointer-events: none;
     }
+    /* Additional text classes for easier toggling */
+    .main-text { }
+    .sub-text { }
+    .subsub-text { }
+    
     /* Animated connector styling */
     .connector {
       stroke: rgba(255, 255, 255, 0.3);
@@ -72,11 +77,10 @@
       font-size: 14px;
       z-index: 10;
     }
-    /* Reset Zoom Button styling */
-    #resetZoom {
+    /* Reset Zoom and Expand/Collapse Button styling */
+    #resetZoom, #collapseButton, #expandButton {
       position: absolute;
       top: 10px;
-      right: 10px;
       z-index: 20;
       padding: 8px 12px;
       background: #fff;
@@ -84,6 +88,9 @@
       border-radius: 4px;
       cursor: pointer;
     }
+    #resetZoom { right: 10px; }
+    #collapseButton { right: 120px; }
+    #expandButton { right: 230px; }
     /* Legend styling */
     .legend text {
       font-family: sans-serif;
@@ -96,8 +103,11 @@
   <svg id="map"></svg>
   <!-- Tooltip element -->
   <div id="tooltip"></div>
-  <!-- Reset Zoom Button -->
+  <!-- Control Buttons -->
   <button id="resetZoom">Reset Zoom</button>
+  <button id="collapseButton">Collapse</button>
+  <button id="expandButton">Expand</button>
+  
   <!-- Load D3.js -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
@@ -115,13 +125,13 @@
     // Spacing constants:
     const mainStartX = 100;      // x of the first main node
     const mainSpacing = 500;     // offset between entire branches
-    const subOffsetX = 400;      // offset from main node to sub
+    const subOffsetX = 400;      // offset from main node to sub node
     const subSpacingY = 350;     // vertical spacing for sub nodes
-    const subSubOffsetX = 400;   // offset from sub node to sub-sub
+    const subSubOffsetX = 400;   // offset from sub node to sub-sub node
     const subSubSpacingY = 125;  // vertical spacing for sub-sub nodes
 
     // ***********************
-    // 1. Define Nodes with Role Labels
+    // 1. Define Nodes with Role Labels using the new hierarchical ID scheme.
     // ***********************
     const mainNodes = [
       { id: "m1", type: "main", title: "A Business Exists", y: height/2, desc: "Foundational assumption: a business exists as an entity that provides value in exchange for resources.", role: "human" },
@@ -137,143 +147,181 @@
     ];
 
     const subNodes = [
-      { id: "s21", type: "sub", title: "Conducts Market Research", desc: "Actively seeks to understand customer needs.", role: "hybrid" },
-      { id: "s22", type: "sub", title: "Observes Trends & Behaviors", desc: "Watches how trends evolve in the market.", role: "hybrid" },
-      { id: "s23", type: "sub", title: "Analyzes Technology & Process Landscape", desc: "Explores current tools and processes for improvement.", role: "hybrid" },
-      { id: "s41", type: "sub", title: "Categorize the Opportunity", desc: "Determines the type of opportunity.", role: "ai" },
-      { id: "s42", type: "sub", title: "Define Scope and Objectives", desc: "Clarifies what is included and what success looks like.", role: "hybrid" },
-      { id: "s43", type: "sub", title: "Allocate Resources and Roles", desc: "Assigns the needed people, tools, and budget.", role: "hybrid" },
-      { id: "s44", type: "sub", title: "Draft Initial Plan or Workflow", desc: "Creates a rough outline to guide execution.", role: "ai" },
-      { id: "s45", type: "sub", title: "Identify Risks and Constraints", desc: "Highlights potential blockers and limitations.", role: "ai" },
-      { id: "s46", type: "sub", title: "Confirm Stakeholder Expectations", desc: "Ensures all parties are aligned.", role: "human" },
-      { id: "s47", type: "sub", title: "Set Success Criteria", desc: "Defines when the opportunity is successfully addressed.", role: "human" },
-      { id: "s61", type: "sub", title: "Gathers or Receives Required Inputs", desc: "Collects necessary data or materials.", role: "ai" },
-      { id: "s62", type: "sub", title: "Performs Core Tasks", desc: "Carries out the main functions needed.", role: "hybrid" },
-      { id: "s63", type: "sub", title: "Collaborates Across Roles or Tools", desc: "Coordinates with other systems or teams.", role: "hybrid" },
-      { id: "s64", type: "sub", title: "Tracks Progress and Captures Output", desc: "Logs work and metrics.", role: "ai" },
-      { id: "s65", type: "sub", title: "Verifies Self-Quality Before Handoff", desc: "Checks that work is complete and correct.", role: "hybrid" },
-      { id: "s71", type: "sub", title: "Conducts Quality Assurance", desc: "Checks work for defects and inconsistencies.", role: "hybrid" },
-      { id: "s72", type: "sub", title: "Performs Peer or Cross-Team Review", desc: "Gathers feedback from colleagues.", role: "human" },
-      { id: "s73", type: "sub", title: "Validates Against Original Requirements", desc: "Ensures deliverables meet defined criteria.", role: "hybrid" },
-      { id: "s74", type: "sub", title: "Conducts Managerial or Final Sign-Off", desc: "Provides the final review and approval.", role: "human" },
-      { id: "s75", type: "sub", title: "Logs Approval and Prepares for Handoff", desc: "Documents approval and readies delivery.", role: "ai" },
-      { id: "s81", type: "sub", title: "Finalizes Output for Delivery", desc: "Polishes the work into its final form.", role: "hybrid" },
-      { id: "s82", type: "sub", title: "Selects Delivery Channel or Method", desc: "Chooses the best way to deliver the work.", role: "hybrid" },
-      { id: "s83", type: "sub", title: "Delivers to Intended Recipient or System", desc: "Executes the delivery.", role: "ai" },
-      { id: "s84", type: "sub", title: "Confirms Receipt and Acknowledgement", desc: "Verifies that the delivery was received.", role: "ai" },
-      { id: "s85", type: "sub", title: "Archives Final Version or Proof of Delivery", desc: "Stores the final output for record keeping.", role: "ai" },
-      { id: "s91", type: "sub", title: "Collects Outcome Feedback", desc: "Gathers responses and performance data.", role: "ai" },
-      { id: "s92", type: "sub", title: "Measures Against Success Criteria", desc: "Compares results to established goals.", role: "ai" },
-      { id: "s93", type: "sub", title: "Identifies Strengths and Shortcomings", desc: "Analyzes what worked and what did not.", role: "ai" },
-      { id: "s94", type: "sub", title: "Logs Learnings and Recommendations", desc: "Records insights for future reference.", role: "hybrid" },
-      { id: "s95", type: "sub", title: "Updates Systems and Practices", desc: "Modifies processes based on lessons learned.", role: "human" }
+      // Sub nodes for main node 2:
+      { id: "m2s1", type: "sub", title: "Conducts Market Research", desc: "Actively seeks to understand customer needs.", role: "hybrid" },
+      { id: "m2s2", type: "sub", title: "Observes Trends & Behaviors", desc: "Watches how trends evolve in the market.", role: "hybrid" },
+      { id: "m2s3", type: "sub", title: "Analyzes Technology & Process Landscape", desc: "Explores current tools and processes for improvement.", role: "hybrid" },
+      // Sub nodes for main node 4:
+      { id: "m4s1", type: "sub", title: "Categorize the Opportunity", desc: "Determines the type of opportunity.", role: "ai" },
+      { id: "m4s2", type: "sub", title: "Define Scope and Objectives", desc: "Clarifies what is included and what success looks like.", role: "hybrid" },
+      { id: "m4s3", type: "sub", title: "Allocate Resources and Roles", desc: "Assigns the needed people, tools, and budget.", role: "hybrid" },
+      { id: "m4s4", type: "sub", title: "Draft Initial Plan or Workflow", desc: "Creates a rough outline to guide execution.", role: "ai" },
+      { id: "m4s5", type: "sub", title: "Identify Risks and Constraints", desc: "Highlights potential blockers and limitations.", role: "ai" },
+      { id: "m4s6", type: "sub", title: "Confirm Stakeholder Expectations", desc: "Ensures all parties are aligned.", role: "human" },
+      { id: "m4s7", type: "sub", title: "Set Success Criteria", desc: "Defines when the opportunity is successfully addressed.", role: "human" },
+      // Sub nodes for main node 6:
+      { id: "m6s1", type: "sub", title: "Gathers or Receives Required Inputs", desc: "Collects necessary data or materials.", role: "ai" },
+      { id: "m6s2", type: "sub", title: "Performs Core Tasks", desc: "Carries out the main functions needed.", role: "hybrid" },
+      { id: "m6s3", type: "sub", title: "Collaborates Across Roles or Tools", desc: "Coordinates with other systems or teams.", role: "hybrid" },
+      { id: "m6s4", type: "sub", title: "Tracks Progress and Captures Output", desc: "Logs work and metrics.", role: "ai" },
+      { id: "m6s5", type: "sub", title: "Verifies Self-Quality Before Handoff", desc: "Checks that work is complete and correct.", role: "hybrid" },
+      // Sub nodes for main node 7:
+      { id: "m7s1", type: "sub", title: "Conducts Quality Assurance", desc: "Checks work for defects and inconsistencies.", role: "hybrid" },
+      { id: "m7s2", type: "sub", title: "Performs Peer or Cross-Team Review", desc: "Gathers feedback from colleagues.", role: "human" },
+      { id: "m7s3", type: "sub", title: "Validates Against Original Requirements", desc: "Ensures deliverables meet defined criteria.", role: "hybrid" },
+      { id: "m7s4", type: "sub", title: "Conducts Managerial or Final Sign-Off", desc: "Provides the final review and approval.", role: "human" },
+      { id: "m7s5", type: "sub", title: "Logs Approval and Prepares for Handoff", desc: "Documents approval and readies delivery.", role: "ai" },
+      // Sub nodes for main node 8:
+      { id: "m8s1", type: "sub", title: "Finalizes Output for Delivery", desc: "Polishes the work into its final form.", role: "hybrid" },
+      { id: "m8s2", type: "sub", title: "Selects Delivery Channel or Method", desc: "Chooses the best way to deliver the work.", role: "hybrid" },
+      { id: "m8s3", type: "sub", title: "Delivers to Intended Recipient or System", desc: "Executes the delivery.", role: "ai" },
+      { id: "m8s4", type: "sub", title: "Confirms Receipt and Acknowledgement", desc: "Verifies that the delivery was received.", role: "ai" },
+      { id: "m8s5", type: "sub", title: "Archives Final Version or Proof of Delivery", desc: "Stores the final output for record keeping.", role: "ai" },
+      // Sub nodes for main node 9:
+      { id: "m9s1", type: "sub", title: "Collects Outcome Feedback", desc: "Gathers responses and performance data.", role: "ai" },
+      { id: "m9s2", type: "sub", title: "Measures Against Success Criteria", desc: "Compares results to established goals.", role: "ai" },
+      { id: "m9s3", type: "sub", title: "Identifies Strengths and Shortcomings", desc: "Analyzes what worked and what did not.", role: "ai" },
+      { id: "m9s4", type: "sub", title: "Logs Learnings and Recommendations", desc: "Records insights for future reference.", role: "hybrid" },
+      { id: "m9s5", type: "sub", title: "Updates Systems and Practices", desc: "Modifies processes based on lessons learned.", role: "human" }
     ];
 
     const subSubNodes = [
-      { id: "ss211", type: "subsub", title: "Distributes Surveys / Runs Interviews", desc: "Collects firsthand insights.", role: "hybrid" },
-      { id: "ss212", type: "subsub", title: "Analyzes Sales & Churn Data", desc: "Processes quantitative data.", role: "ai" },
-      { id: "ss213", type: "subsub", title: "Reviews Competitor Feedback", desc: "Examines competitor strengths and weaknesses.", role: "hybrid" },
-      { id: "ss221", type: "subsub", title: "Scrapes Forums / Social Platforms", desc: "Gathers online discussions.", role: "ai" },
-      { id: "ss222", type: "subsub", title: "Watches Keyword & Search Trends", desc: "Monitors trending search data.", role: "ai" },
-      { id: "ss223", type: "subsub", title: "Follows Consumer Habits", desc: "Tracks shifts in behavior.", role: "hybrid" },
-      { id: "ss231", type: "subsub", title: "Tracks New APIs & Platforms", desc: "Identifies emerging technologies.", role: "ai" },
-      { id: "ss232", type: "subsub", title: "Audits Standard Workflows", desc: "Reviews existing processes.", role: "ai" },
-      { id: "ss233", type: "subsub", title: "Compares Operational Benchmarks", desc: "Measures performance against norms.", role: "ai" },
-      { id: "ss411", type: "subsub", title: "Classifies by Business Function", desc: "Determines the relevant business area.", role: "ai" },
-      { id: "ss412", type: "subsub", title: "Tags Complexity or Urgency", desc: "Labels the effort required.", role: "ai" },
-      { id: "ss413", type: "subsub", title: "Matches with Historical Work Archetypes", desc: "Finds similar past projects.", role: "ai" },
-      { id: "ss421", type: "subsub", title: "Clarifies Deliverables and Constraints", desc: "Outlines what must be delivered.", role: "hybrid" },
-      { id: "ss422", type: "subsub", title: "Establishes Success Criteria", desc: "Defines measurable outcomes.", role: "hybrid" },
-      { id: "ss423", type: "subsub", title: "Confirms Stakeholder Agreements", desc: "Verifies mutual consent.", role: "human" },
-      { id: "ss431", type: "subsub", title: "Assigns Ownership and Responsibility", desc: "Determines who leads each task.", role: "human" },
-      { id: "ss432", type: "subsub", title: "Confirms Tool Access and Permissions", desc: "Ensures necessary accesses are in place.", role: "ai" },
-      { id: "ss433", type: "subsub", title: "Estimates Time and Budget Needs", desc: "Forecasts resource requirements.", role: "ai" },
-      { id: "ss441", type: "subsub", title: "Outlines Major Phases or Milestones", desc: "Breaks work into segments.", role: "ai" },
-      { id: "ss442", type: "subsub", title: "Maps Task Dependencies", desc: "Shows prerequisite relationships.", role: "ai" },
-      { id: "ss443", type: "subsub", title: "Creates Visual or Written Workflow", desc: "Documents the execution path.", role: "ai" },
-      { id: "ss451", type: "subsub", title: "Flags External Dependencies", desc: "Identifies outside requirements.", role: "ai" },
-      { id: "ss452", type: "subsub", title: "Surfaces Legal, Compliance, or Policy Concerns", desc: "Highlights sensitive issues.", role: "human" },
-      { id: "ss453", type: "subsub", title: "Identifies Known Technical Limitations", desc: "Notes current system constraints.", role: "ai" },
-      { id: "ss461", type: "subsub", title: "Holds Kickoff or Alignment Meeting", desc: "Starts the project with team alignment.", role: "human" },
-      { id: "ss462", type: "subsub", title: "Documents Commitments and Expectations", desc: "Records agreed-upon points.", role: "human" },
-      { id: "ss463", type: "subsub", title: "Logs Stakeholder Sign-Off", desc: "Documents final approvals.", role: "human" },
-      { id: "ss471", type: "subsub", title: "Chooses Leading & Lagging Metrics", desc: "Selects performance indicators.", role: "ai" },
-      { id: "ss472", type: "subsub", title: "Creates Tracking or Dashboard Plan", desc: "Plans how to monitor progress.", role: "ai" },
-      { id: "ss473", type: "subsub", title: "Aligns Metrics With Business Objectives", desc: "Ensures metrics reflect strategic goals.", role: "human" },
-      { id: "ss611", type: "subsub", title: "Retrieves Instructions, Briefs, or Requirements", desc: "Pulls necessary documentation.", role: "ai" },
-      { id: "ss612", type: "subsub", title: "Collects Materials, Data, or Assets", desc: "Gathers required inputs.", role: "ai" },
-      { id: "ss613", type: "subsub", title: "Verifies Input Completeness and Accuracy", desc: "Checks data quality.", role: "ai" },
-      { id: "ss621", type: "subsub", title: "Applies Skills or Tools to Deliver Output", desc: "Executes the core task.", role: "hybrid" },
-      { id: "ss622", type: "subsub", title: "Follows Defined Workflow or Process", desc: "Adheres to the plan.", role: "ai" },
-      { id: "ss623", type: "subsub", title: "Adapts to Unexpected Situations if Needed", desc: "Responds to unplanned challenges.", role: "human" },
-      { id: "ss631", type: "subsub", title: "Hands Off Partial Work for Contribution", desc: "Transfers parts of work for input.", role: "human" },
-      { id: "ss632", type: "subsub", title: "Uses Integrated Tools, APIs, or Workflows", desc: "Connects across systems.", role: "ai" },
-      { id: "ss633", type: "subsub", title: "Communicates Status or Needs in Real Time", desc: "Shares updates instantly.", role: "ai" },
-      { id: "ss641", type: "subsub", title: "Saves and Stores Work in Agreed Location", desc: "Archives the work.", role: "ai" },
-      { id: "ss642", type: "subsub", title: "Updates Task or Project Management Systems", desc: "Logs current status.", role: "ai" },
-      { id: "ss643", type: "subsub", title: "Records Key Metrics or Completion Data", desc: "Captures performance numbers.", role: "ai" },
-      { id: "ss651", type: "subsub", title: "Cross-Checks Against Brief or Criteria", desc: "Verifies requirements are met.", role: "hybrid" },
-      { id: "ss652", type: "subsub", title: "Runs Basic Tests or Validations", desc: "Performs simple checks.", role: "ai" },
-      { id: "ss653", type: "subsub", title: "Makes Final Edits or Fixes", desc: "Adjusts minor issues.", role: "hybrid" },
-      { id: "ss711", type: "subsub", title: "Checks for Errors, Omissions, or Defects", desc: "Scans for mistakes.", role: "ai" },
-      { id: "ss712", type: "subsub", title: "Confirms Adherence to Internal Standards", desc: "Ensures compliance with standards.", role: "ai" },
-      { id: "ss713", type: "subsub", title: "Tests Output in Relevant Environment", desc: "Validates functionality.", role: "ai" },
-      { id: "ss721", type: "subsub", title: "Assigns Reviewer Not Involved in Execution", desc: "Selects an unbiased reviewer.", role: "human" },
-      { id: "ss722", type: "subsub", title: "Collects Feedback and Suggested Changes", desc: "Gathers improvement ideas.", role: "human" },
-      { id: "ss723", type: "subsub", title: "Iterates Based on Internal Collaboration", desc: "Revises work based on input.", role: "human" },
-      { id: "ss731", type: "subsub", title: "Cross-References Output with Scope or Brief", desc: "Checks work against expectations.", role: "hybrid" },
-      { id: "ss732", type: "subsub", title: "Checks All Success Criteria Are Met", desc: "Verifies key goals are achieved.", role: "ai" },
-      { id: "ss733", type: "subsub", title: "Identifies Gaps or Overlooked Elements", desc: "Finds missing pieces.", role: "ai" },
-      { id: "ss741", type: "subsub", title: "Escalates Work for Final Authority Review", desc: "Sends work up the chain.", role: "human" },
-      { id: "ss742", type: "subsub", title: "Assesses Strategic or Client Alignment", desc: "Ensures strategic fit.", role: "human" },
-      { id: "ss743", type: "subsub", title: "Signs Off or Requests Final Adjustments", desc: "Gives final approval or feedback.", role: "human" },
-      { id: "ss751", type: "subsub", title: "Marks Work as Approved in Tracking System", desc: "Updates status to approved.", role: "ai" },
-      { id: "ss752", type: "subsub", title: "Packages Deliverables for Final Delivery", desc: "Prepares assets for handoff.", role: "ai" },
-      { id: "ss753", type: "subsub", title: "Coordinates Handoff Timing and Channel", desc: "Synchronizes the transfer.", role: "ai" },
-      { id: "ss811", type: "subsub", title: "Applies Final Formatting or Cleanup", desc: "Polishes the final output.", role: "ai" },
-      { id: "ss812", type: "subsub", title: "Converts Output into Required Format", desc: "Transforms the work into the needed format.", role: "ai" },
-      { id: "ss813", type: "subsub", title: "Runs Last Check Before Packaging", desc: "Performs a final review.", role: "hybrid" },
-      { id: "ss821", type: "subsub", title: "Evaluates Recipient’s Needs and Preferences", desc: "Assesses the best delivery approach.", role: "human" },
-      { id: "ss822", type: "subsub", title: "Chooses Secure and Efficient Method", desc: "Selects a safe delivery method.", role: "ai" },
-      { id: "ss823", type: "subsub", title: "Prepares Channel for Use", desc: "Gets the delivery channel ready.", role: "ai" },
-      { id: "ss831", type: "subsub", title: "Executes Transfer or Submission", desc: "Carries out the transfer.", role: "ai" },
-      { id: "ss832", type: "subsub", title: "Includes Necessary Instructions or Context", desc: "Adds guidance with the delivery.", role: "hybrid" },
-      { id: "ss833", type: "subsub", title: "Ensures Access is Granted and Live", desc: "Verifies that delivery is accessible.", role: "ai" },
-      { id: "ss841", type: "subsub", title: "Notifies Stakeholder of Completion", desc: "Sends a completion alert.", role: "ai" },
-      { id: "ss842", type: "subsub", title: "Requests or Monitors Confirmation", desc: "Watches for confirmation.", role: "ai" },
-      { id: "ss843", type: "subsub", title: "Follows Up If Delivery Unacknowledged", desc: "Reaches out if needed.", role: "ai" },
-      { id: "ss851", type: "subsub", title: "Saves Deliverable to Long-Term Storage", desc: "Archives the delivery.", role: "ai" },
-      { id: "ss852", type: "subsub", title: "Logs Delivery Timestamp and Method", desc: "Records delivery details.", role: "ai" },
-      { id: "ss853", type: "subsub", title: "Backs Up Files or Output Securely", desc: "Creates a secure backup.", role: "ai" },
-      { id: "ss911", type: "subsub", title: "Distributes Feedback Requests or Surveys", desc: "Initiates feedback collection.", role: "ai" },
-      { id: "ss912", type: "subsub", title: "Monitors Organic Feedback Channels", desc: "Observes natural feedback flows.", role: "ai" },
-      { id: "ss913", type: "subsub", title: "Aggregates Quantitative & Qualitative Responses", desc: "Combines different feedback types.", role: "ai" },
-      { id: "ss921", type: "subsub", title: "Revisits Goals Defined During Preparation", desc: "Brings back the original targets.", role: "human" },
-      { id: "ss922", type: "subsub", title: "Compiles Post-Delivery Metrics or Logs", desc: "Collects performance data.", role: "ai" },
-      { id: "ss923", type: "subsub", title: "Compares Results to Benchmarks or Thresholds", desc: "Measures outcomes against standards.", role: "ai" },
-      { id: "ss931", type: "subsub", title: "Runs Internal Team Debrief", desc: "Leads a reflective discussion.", role: "human" },
-      { id: "ss932", type: "subsub", title: "Surfaces Process or Communication Breakdowns", desc: "Identifies where things went wrong.", role: "human" },
-      { id: "ss933", type: "subsub", title: "Highlights High-Impact Success Factors", desc: "Points out what drove success.", role: "human" },
-      { id: "ss941", type: "subsub", title: "Writes Up Lessons Learned Summary", desc: "Documents key takeaways.", role: "hybrid" },
-      { id: "ss942", type: "subsub", title: "Links Outcomes to Specific Actions or Decisions", desc: "Connects results with causes.", role: "hybrid" },
-      { id: "ss943", type: "subsub", title: "Tags Learnings for Future Retrieval", desc: "Makes insights easily searchable.", role: "ai" },
-      { id: "ss951", type: "subsub", title: "Improves Documentation or Templates", desc: "Updates reference materials.", role: "ai" },
-      { id: "ss952", type: "subsub", title: "Implements New Tools or Adjustments", desc: "Introduces changes to boost efficiency.", role: "ai" },
-      { id: "ss953", type: "subsub", title: "Shares Improvements with the Org", desc: "Communicates enhancements to the team.", role: "human" }
+      // For sub node m2s1:
+      { id: "m2s1ss1", type: "subsub", title: "Distributes Surveys / Runs Interviews", desc: "Collects firsthand insights.", role: "hybrid" },
+      { id: "m2s1ss2", type: "subsub", title: "Analyzes Sales & Churn Data", desc: "Processes quantitative data.", role: "ai" },
+      { id: "m2s1ss3", type: "subsub", title: "Reviews Competitor Feedback", desc: "Examines competitor strengths and weaknesses.", role: "hybrid" },
+      // For sub node m2s2:
+      { id: "m2s2ss1", type: "subsub", title: "Scrapes Forums / Social Platforms", desc: "Gathers online discussions.", role: "ai" },
+      { id: "m2s2ss2", type: "subsub", title: "Watches Keyword & Search Trends", desc: "Monitors trending search data.", role: "ai" },
+      { id: "m2s2ss3", type: "subsub", title: "Follows Consumer Habits", desc: "Tracks shifts in behavior.", role: "hybrid" },
+      // For sub node m2s3:
+      { id: "m2s3ss1", type: "subsub", title: "Tracks New APIs & Platforms", desc: "Identifies emerging technologies.", role: "ai" },
+      { id: "m2s3ss2", type: "subsub", title: "Audits Standard Workflows", desc: "Reviews existing processes.", role: "ai" },
+      { id: "m2s3ss3", type: "subsub", title: "Compares Operational Benchmarks", desc: "Measures performance against norms.", role: "ai" },
+      // For sub node m4s1:
+      { id: "m4s1ss1", type: "subsub", title: "Classifies by Business Function", desc: "Determines the relevant business area.", role: "ai" },
+      { id: "m4s1ss2", type: "subsub", title: "Tags Complexity or Urgency", desc: "Labels the effort required.", role: "ai" },
+      { id: "m4s1ss3", type: "subsub", title: "Matches with Historical Work Archetypes", desc: "Finds similar past projects.", role: "ai" },
+      // For sub node m4s2:
+      { id: "m4s2ss1", type: "subsub", title: "Clarifies Deliverables and Constraints", desc: "Outlines what must be delivered.", role: "hybrid" },
+      { id: "m4s2ss2", type: "subsub", title: "Establishes Success Criteria", desc: "Defines measurable outcomes.", role: "hybrid" },
+      { id: "m4s2ss3", type: "subsub", title: "Confirms Stakeholder Agreements", desc: "Verifies mutual consent.", role: "human" },
+      // For sub node m4s3:
+      { id: "m4s3ss1", type: "subsub", title: "Assigns Ownership and Responsibility", desc: "Determines who leads each task.", role: "human" },
+      { id: "m4s3ss2", type: "subsub", title: "Confirms Tool Access and Permissions", desc: "Ensures necessary accesses are in place.", role: "ai" },
+      { id: "m4s3ss3", type: "subsub", title: "Estimates Time and Budget Needs", desc: "Forecasts resource requirements.", role: "ai" },
+      // For sub node m4s4:
+      { id: "m4s4ss1", type: "subsub", title: "Outlines Major Phases or Milestones", desc: "Breaks work into segments.", role: "ai" },
+      { id: "m4s4ss2", type: "subsub", title: "Maps Task Dependencies", desc: "Shows prerequisite relationships.", role: "ai" },
+      { id: "m4s4ss3", type: "subsub", title: "Creates Visual or Written Workflow", desc: "Documents the execution path.", role: "ai" },
+      // For sub node m4s5:
+      { id: "m4s5ss1", type: "subsub", title: "Flags External Dependencies", desc: "Identifies outside requirements.", role: "ai" },
+      { id: "m4s5ss2", type: "subsub", title: "Surfaces Legal, Compliance, or Policy Concerns", desc: "Highlights sensitive issues.", role: "human" },
+      { id: "m4s5ss3", type: "subsub", title: "Identifies Known Technical Limitations", desc: "Notes current system constraints.", role: "ai" },
+      // For sub node m4s6:
+      { id: "m4s6ss1", type: "subsub", title: "Holds Kickoff or Alignment Meeting", desc: "Starts the project with team alignment.", role: "human" },
+      { id: "m4s6ss2", type: "subsub", title: "Documents Commitments and Expectations", desc: "Records agreed-upon points.", role: "human" },
+      { id: "m4s6ss3", type: "subsub", title: "Logs Stakeholder Sign-Off", desc: "Documents final approvals.", role: "human" },
+      // For sub node m4s7:
+      { id: "m4s7ss1", type: "subsub", title: "Chooses Leading & Lagging Metrics", desc: "Selects performance indicators.", role: "ai" },
+      { id: "m4s7ss2", type: "subsub", title: "Creates Tracking or Dashboard Plan", desc: "Plans how to monitor progress.", role: "ai" },
+      { id: "m4s7ss3", type: "subsub", title: "Aligns Metrics With Business Objectives", desc: "Ensures metrics reflect strategic goals.", role: "human" },
+      // For sub node m6s1:
+      { id: "m6s1ss1", type: "subsub", title: "Retrieves Instructions, Briefs, or Requirements", desc: "Pulls necessary documentation.", role: "ai" },
+      { id: "m6s1ss2", type: "subsub", title: "Collects Materials, Data, or Assets", desc: "Gathers required inputs.", role: "ai" },
+      { id: "m6s1ss3", type: "subsub", title: "Verifies Input Completeness and Accuracy", desc: "Checks data quality.", role: "ai" },
+      // For sub node m6s2:
+      { id: "m6s2ss1", type: "subsub", title: "Applies Skills or Tools to Deliver Output", desc: "Executes the core task.", role: "hybrid" },
+      { id: "m6s2ss2", type: "subsub", title: "Follows Defined Workflow or Process", desc: "Adheres to the plan.", role: "ai" },
+      { id: "m6s2ss3", type: "subsub", title: "Adapts to Unexpected Situations if Needed", desc: "Responds to unplanned challenges.", role: "human" },
+      // For sub node m6s3:
+      { id: "m6s3ss1", type: "subsub", title: "Hands Off Partial Work for Contribution", desc: "Transfers parts of work for input.", role: "human" },
+      { id: "m6s3ss2", type: "subsub", title: "Uses Integrated Tools, APIs, or Workflows", desc: "Connects across systems.", role: "ai" },
+      { id: "m6s3ss3", type: "subsub", title: "Communicates Status or Needs in Real Time", desc: "Shares updates instantly.", role: "ai" },
+      // For sub node m6s4:
+      { id: "m6s4ss1", type: "subsub", title: "Saves and Stores Work in Agreed Location", desc: "Archives the work.", role: "ai" },
+      { id: "m6s4ss2", type: "subsub", title: "Updates Task or Project Management Systems", desc: "Logs current status.", role: "ai" },
+      { id: "m6s4ss3", type: "subsub", title: "Records Key Metrics or Completion Data", desc: "Captures performance numbers.", role: "ai" },
+      // For sub node m6s5:
+      { id: "m6s5ss1", type: "subsub", title: "Cross-Checks Against Brief or Criteria", desc: "Verifies requirements are met.", role: "hybrid" },
+      { id: "m6s5ss2", type: "subsub", title: "Runs Basic Tests or Validations", desc: "Performs simple checks.", role: "ai" },
+      { id: "m6s5ss3", type: "subsub", title: "Makes Final Edits or Fixes", desc: "Adjusts minor issues.", role: "hybrid" },
+      // For sub node m7s1:
+      { id: "m7s1ss1", type: "subsub", title: "Checks for Errors, Omissions, or Defects", desc: "Scans for mistakes.", role: "ai" },
+      { id: "m7s1ss2", type: "subsub", title: "Confirms Adherence to Internal Standards", desc: "Ensures compliance with standards.", role: "ai" },
+      { id: "m7s1ss3", type: "subsub", title: "Tests Output in Relevant Environment", desc: "Validates functionality.", role: "ai" },
+      // For sub node m7s2:
+      { id: "m7s2ss1", type: "subsub", title: "Assigns Reviewer Not Involved in Execution", desc: "Selects an unbiased reviewer.", role: "human" },
+      { id: "m7s2ss2", type: "subsub", title: "Collects Feedback and Suggested Changes", desc: "Gathers improvement ideas.", role: "human" },
+      { id: "m7s2ss3", type: "subsub", title: "Iterates Based on Internal Collaboration", desc: "Revises work based on input.", role: "human" },
+      // For sub node m7s3:
+      { id: "m7s3ss1", type: "subsub", title: "Cross-References Output with Scope or Brief", desc: "Checks work against expectations.", role: "hybrid" },
+      { id: "m7s3ss2", type: "subsub", title: "Checks All Success Criteria Are Met", desc: "Verifies key goals are achieved.", role: "ai" },
+      { id: "m7s3ss3", type: "subsub", title: "Identifies Gaps or Overlooked Elements", desc: "Finds missing pieces.", role: "ai" },
+      // For sub node m7s4:
+      { id: "m7s4ss1", type: "subsub", title: "Escalates Work for Final Authority Review", desc: "Sends work up the chain.", role: "human" },
+      { id: "m7s4ss2", type: "subsub", title: "Assesses Strategic or Client Alignment", desc: "Ensures strategic fit.", role: "human" },
+      { id: "m7s4ss3", type: "subsub", title: "Signs Off or Requests Final Adjustments", desc: "Gives final approval or feedback.", role: "human" },
+      // For sub node m7s5:
+      { id: "m7s5ss1", type: "subsub", title: "Marks Work as Approved in Tracking System", desc: "Updates status to approved.", role: "ai" },
+      { id: "m7s5ss2", type: "subsub", title: "Packages Deliverables for Final Delivery", desc: "Prepares assets for handoff.", role: "ai" },
+      { id: "m7s5ss3", type: "subsub", title: "Coordinates Handoff Timing and Channel", desc: "Synchronizes the transfer.", role: "ai" },
+      // For sub node m8s1:
+      { id: "m8s1ss1", type: "subsub", title: "Applies Final Formatting or Cleanup", desc: "Polishes the final output.", role: "ai" },
+      { id: "m8s1ss2", type: "subsub", title: "Converts Output into Required Format", desc: "Transforms the work into the needed format.", role: "ai" },
+      { id: "m8s1ss3", type: "subsub", title: "Runs Last Check Before Packaging", desc: "Performs a final review.", role: "hybrid" },
+      // For sub node m8s2:
+      { id: "m8s2ss1", type: "subsub", title: "Evaluates Recipient’s Needs and Preferences", desc: "Assesses the best delivery approach.", role: "human" },
+      { id: "m8s2ss2", type: "subsub", title: "Chooses Secure and Efficient Method", desc: "Selects a safe delivery method.", role: "ai" },
+      { id: "m8s2ss3", type: "subsub", title: "Prepares Channel for Use", desc: "Gets the delivery channel ready.", role: "ai" },
+      // For sub node m8s3:
+      { id: "m8s3ss1", type: "subsub", title: "Executes Transfer or Submission", desc: "Carries out the transfer.", role: "ai" },
+      { id: "m8s3ss2", type: "subsub", title: "Includes Necessary Instructions or Context", desc: "Adds guidance with the delivery.", role: "hybrid" },
+      { id: "m8s3ss3", type: "subsub", title: "Ensures Access is Granted and Live", desc: "Verifies that delivery is accessible.", role: "ai" },
+      // For sub node m8s4:
+      { id: "m8s4ss1", type: "subsub", title: "Notifies Stakeholder of Completion", desc: "Sends a completion alert.", role: "ai" },
+      { id: "m8s4ss2", type: "subsub", title: "Requests or Monitors Confirmation", desc: "Watches for confirmation.", role: "ai" },
+      { id: "m8s4ss3", type: "subsub", title: "Follows Up If Delivery Unacknowledged", desc: "Reaches out if needed.", role: "ai" },
+      // For sub node m8s5:
+      { id: "m8s5ss1", type: "subsub", title: "Saves Deliverable to Long-Term Storage", desc: "Archives the delivery.", role: "ai" },
+      { id: "m8s5ss2", type: "subsub", title: "Logs Delivery Timestamp and Method", desc: "Records delivery details.", role: "ai" },
+      { id: "m8s5ss3", type: "subsub", title: "Backs Up Files or Output Securely", desc: "Creates a secure backup.", role: "ai" },
+      // For sub node m9s1:
+      { id: "m9s1ss1", type: "subsub", title: "Distributes Feedback Requests or Surveys", desc: "Initiates feedback collection.", role: "ai" },
+      { id: "m9s1ss2", type: "subsub", title: "Monitors Organic Feedback Channels", desc: "Observes natural feedback flows.", role: "ai" },
+      { id: "m9s1ss3", type: "subsub", title: "Aggregates Quantitative & Qualitative Responses", desc: "Combines different feedback types.", role: "ai" },
+      // For sub node m9s2:
+      { id: "m9s2ss1", type: "subsub", title: "Revisits Goals Defined During Preparation", desc: "Brings back the original targets.", role: "human" },
+      { id: "m9s2ss2", type: "subsub", title: "Compiles Post-Delivery Metrics or Logs", desc: "Collects performance data.", role: "ai" },
+      { id: "m9s2ss3", type: "subsub", title: "Compares Results to Benchmarks or Thresholds", desc: "Measures outcomes against standards.", role: "ai" },
+      // For sub node m9s3:
+      { id: "m9s3ss1", type: "subsub", title: "Runs Internal Team Debrief", desc: "Leads a reflective discussion.", role: "human" },
+      { id: "m9s3ss2", type: "subsub", title: "Surfaces Process or Communication Breakdowns", desc: "Identifies where things went wrong.", role: "human" },
+      { id: "m9s3ss3", type: "subsub", title: "Highlights High-Impact Success Factors", desc: "Points out what drove success.", role: "human" },
+      // For sub node m9s4:
+      { id: "m9s4ss1", type: "subsub", title: "Writes Up Lessons Learned Summary", desc: "Documents key takeaways.", role: "hybrid" },
+      { id: "m9s4ss2", type: "subsub", title: "Links Outcomes to Specific Actions or Decisions", desc: "Connects results with causes.", role: "hybrid" },
+      { id: "m9s4ss3", type: "subsub", title: "Tags Learnings for Future Retrieval", desc: "Makes insights easily searchable.", role: "ai" },
+      // For sub node m9s5:
+      { id: "m9s5ss1", type: "subsub", title: "Improves Documentation or Templates", desc: "Updates reference materials.", role: "ai" },
+      { id: "m9s5ss2", type: "subsub", title: "Implements New Tools or Adjustments", desc: "Introduces changes to boost efficiency.", role: "ai" },
+      { id: "m9s5ss3", type: "subsub", title: "Shares Improvements with the Org", desc: "Communicates enhancements to the team.", role: "human" }
     ];
 
-    // Helper functions to retrieve sub nodes.
+    // ***********************
+    // 2. Helper functions – updated to work with the new ID convention.
+    // ***********************
     function getSubsForMain(mId) {
-      const digit = mId.substring(1);
-      return subNodes.filter(n => n.id.charAt(1) === digit);
+      // Return sub nodes whose ID starts with the main node ID plus "s"
+      return subNodes.filter(n => n.id.startsWith(mId + "s"));
     }
     function getSubSubsForSub(sId) {
-      const key = sId.substring(1);
-      return subSubNodes.filter(n => n.id.substring(2,4) === key);
+      // Return sub-sub nodes whose ID starts with the sub node's full ID plus "ss"
+      return subSubNodes.filter(n => n.id.startsWith(sId + "ss"));
     }
 
     // ***********************
-    // Single-pass layout logic
+    // 3. Single-pass layout logic
     // ***********************
 
     // Place the first main node.
@@ -320,229 +368,10 @@
     allNodesCombined.forEach(n => nodeById[n.id] = n);
 
     // ***********************
-    // 2. Define Connections
-    // ***********************
-    const connections = [
-      { source: "m1", target: "m2" },
-      { source: "m2", target: "s21" },
-      { source: "s21", target: "ss211" },
-      { source: "s21", target: "ss212" },
-      { source: "s21", target: "ss213" },
-      { source: "m2", target: "s22" },
-      { source: "s22", target: "ss221" },
-      { source: "s22", target: "ss222" },
-      { source: "s22", target: "ss223" },
-      { source: "m2", target: "s23" },
-      { source: "s23", target: "ss231" },
-      { source: "s23", target: "ss232" },
-      { source: "s23", target: "ss233" },
-      { source: "ss211", target: "m3" },
-      { source: "ss212", target: "m3" },
-      { source: "ss213", target: "m3" },
-      { source: "ss221", target: "m3" },
-      { source: "ss222", target: "m3" },
-      { source: "ss223", target: "m3" },
-      { source: "ss231", target: "m3" },
-      { source: "ss232", target: "m3" },
-      { source: "ss233", target: "m3" },
-      { source: "m3", target: "m4" },
-      { source: "m4", target: "s41" },
-      { source: "s41", target: "ss411" },
-      { source: "s41", target: "ss412" },
-      { source: "s41", target: "ss413" },
-      { source: "m4", target: "s42" },
-      { source: "s42", target: "ss421" },
-      { source: "s42", target: "ss422" },
-      { source: "s42", target: "ss423" },
-      { source: "m4", target: "s43" },
-      { source: "s43", target: "ss431" },
-      { source: "s43", target: "ss432" },
-      { source: "s43", target: "ss433" },
-      { source: "m4", target: "s44" },
-      { source: "s44", target: "ss441" },
-      { source: "s44", target: "ss442" },
-      { source: "s44", target: "ss443" },
-      { source: "m4", target: "s45" },
-      { source: "s45", target: "ss451" },
-      { source: "s45", target: "ss452" },
-      { source: "s45", target: "ss453" },
-      { source: "m4", target: "s46" },
-      { source: "s46", target: "ss461" },
-      { source: "s46", target: "ss462" },
-      { source: "s46", target: "ss463" },
-      { source: "m4", target: "s47" },
-      { source: "s47", target: "ss471" },
-      { source: "s47", target: "ss472" },
-      { source: "s47", target: "ss473" },
-      { source: "ss411", target: "m5" },
-      { source: "ss412", target: "m5" },
-      { source: "ss413", target: "m5" },
-      { source: "ss421", target: "m5" },
-      { source: "ss422", target: "m5" },
-      { source: "ss423", target: "m5" },
-      { source: "ss431", target: "m5" },
-      { source: "ss432", target: "m5" },
-      { source: "ss433", target: "m5" },
-      { source: "ss441", target: "m5" },
-      { source: "ss442", target: "m5" },
-      { source: "ss443", target: "m5" },
-      { source: "ss451", target: "m5" },
-      { source: "ss452", target: "m5" },
-      { source: "ss453", target: "m5" },
-      { source: "ss461", target: "m5" },
-      { source: "ss462", target: "m5" },
-      { source: "ss463", target: "m5" },
-      { source: "ss471", target: "m5" },
-      { source: "ss472", target: "m5" },
-      { source: "ss473", target: "m5" },
-      { source: "m5", target: "m6" },
-      { source: "m6", target: "s61" },
-      { source: "s61", target: "ss611" },
-      { source: "s61", target: "ss612" },
-      { source: "s61", target: "ss613" },
-      { source: "m6", target: "s62" },
-      { source: "s62", target: "ss621" },
-      { source: "s62", target: "ss622" },
-      { source: "s62", target: "ss623" },
-      { source: "m6", target: "s63" },
-      { source: "s63", target: "ss631" },
-      { source: "s63", target: "ss632" },
-      { source: "s63", target: "ss633" },
-      { source: "m6", target: "s64" },
-      { source: "s64", target: "ss641" },
-      { source: "s64", target: "ss642" },
-      { source: "s64", target: "ss643" },
-      { source: "m6", target: "s65" },
-      { source: "s65", target: "ss651" },
-      { source: "s65", target: "ss652" },
-      { source: "s65", target: "ss653" },
-      { source: "ss611", target: "m7" },
-      { source: "ss612", target: "m7" },
-      { source: "ss613", target: "m7" },
-      { source: "ss621", target: "m7" },
-      { source: "ss622", target: "m7" },
-      { source: "ss623", target: "m7" },
-      { source: "ss631", target: "m7" },
-      { source: "ss632", target: "m7" },
-      { source: "ss633", target: "m7" },
-      { source: "ss641", target: "m7" },
-      { source: "ss642", target: "m7" },
-      { source: "ss643", target: "m7" },
-      { source: "ss651", target: "m7" },
-      { source: "ss652", target: "m7" },
-      { source: "ss653", target: "m7" },
-      { source: "m7", target: "s71" },
-      { source: "s71", target: "ss711" },
-      { source: "s71", target: "ss712" },
-      { source: "s71", target: "ss713" },
-      { source: "m7", target: "s72" },
-      { source: "s72", target: "ss721" },
-      { source: "s72", target: "ss722" },
-      { source: "s72", target: "ss723" },
-      { source: "m7", target: "s73" },
-      { source: "s73", target: "ss731" },
-      { source: "s73", target: "ss732" },
-      { source: "s73", target: "ss733" },
-      { source: "m7", target: "s74" },
-      { source: "s74", target: "ss741" },
-      { source: "s74", target: "ss742" },
-      { source: "s74", target: "ss743" },
-      { source: "m7", target: "s75" },
-      { source: "s75", target: "ss751" },
-      { source: "s75", target: "ss752" },
-      { source: "s75", target: "ss753" },
-      { source: "ss711", target: "m8" },
-      { source: "ss712", target: "m8" },
-      { source: "ss713", target: "m8" },
-      { source: "ss721", target: "m8" },
-      { source: "ss722", target: "m8" },
-      { source: "ss723", target: "m8" },
-      { source: "ss731", target: "m8" },
-      { source: "ss732", target: "m8" },
-      { source: "ss733", target: "m8" },
-      { source: "ss741", target: "m8" },
-      { source: "ss742", target: "m8" },
-      { source: "ss743", target: "m8" },
-      { source: "ss751", target: "m8" },
-      { source: "ss752", target: "m8" },
-      { source: "ss753", target: "m8" },
-      { source: "m8", target: "s81" },
-      { source: "s81", target: "ss811" },
-      { source: "s81", target: "ss812" },
-      { source: "s81", target: "ss813" },
-      { source: "m8", target: "s82" },
-      { source: "s82", target: "ss821" },
-      { source: "s82", target: "ss822" },
-      { source: "s82", target: "ss823" },
-      { source: "m8", target: "s83" },
-      { source: "s83", target: "ss831" },
-      { source: "s83", target: "ss832" },
-      { source: "s83", target: "ss833" },
-      { source: "m8", target: "s84" },
-      { source: "s84", target: "ss841" },
-      { source: "s84", target: "ss842" },
-      { source: "s84", target: "ss843" },
-      { source: "m8", target: "s85" },
-      { source: "s85", target: "ss851" },
-      { source: "s85", target: "ss852" },
-      { source: "s85", target: "ss853" },
-      { source: "ss811", target: "m9" },
-      { source: "ss812", target: "m9" },
-      { source: "ss813", target: "m9" },
-      { source: "ss821", target: "m9" },
-      { source: "ss822", target: "m9" },
-      { source: "ss823", target: "m9" },
-      { source: "ss831", target: "m9" },
-      { source: "ss832", target: "m9" },
-      { source: "ss833", target: "m9" },
-      { source: "ss841", target: "m9" },
-      { source: "ss842", target: "m9" },
-      { source: "ss843", target: "m9" },
-      { source: "ss851", target: "m9" },
-      { source: "ss852", target: "m9" },
-      { source: "ss853", target: "m9" },
-      { source: "m9", target: "s91" },
-      { source: "s91", target: "ss911" },
-      { source: "s91", target: "ss912" },
-      { source: "s91", target: "ss913" },
-      { source: "m9", target: "s92" },
-      { source: "s92", target: "ss921" },
-      { source: "s92", target: "ss922" },
-      { source: "s92", target: "ss923" },
-      { source: "m9", target: "s93" },
-      { source: "s93", target: "ss931" },
-      { source: "s93", target: "ss932" },
-      { source: "s93", target: "ss933" },
-      { source: "m9", target: "s94" },
-      { source: "s94", target: "ss941" },
-      { source: "s94", target: "ss942" },
-      { source: "s94", target: "ss943" },
-      { source: "m9", target: "s95" },
-      { source: "s95", target: "ss951" },
-      { source: "s95", target: "ss952" },
-      { source: "s95", target: "ss953" },
-      { source: "ss911", target: "m10" },
-      { source: "ss912", target: "m10" },
-      { source: "ss913", target: "m10" },
-      { source: "ss921", target: "m10" },
-      { source: "ss922", target: "m10" },
-      { source: "ss923", target: "m10" },
-      { source: "ss931", target: "m10" },
-      { source: "ss932", target: "m10" },
-      { source: "ss933", target: "m10" },
-      { source: "ss941", target: "m10" },
-      { source: "ss942", target: "m10" },
-      { source: "ss943", target: "m10" },
-      { source: "ss951", target: "m10" },
-      { source: "ss952", target: "m10" },
-      { source: "ss953", target: "m10" }
-    ];
-
-    // ***********************
-    // 3. Draw the Nodes and Labels
+    // 4. Draw the Nodes and Labels
     // ***********************
     // Draw main nodes.
-    g.selectAll("circle.main")
+    g.selectAll("circle.main-node")
       .data(mainNodes)
       .enter()
       .append("circle")
@@ -555,13 +384,13 @@
       .data(mainNodes)
       .enter()
       .append("text")
-      .attr("class", "node-text")
+      .attr("class", "node-text main-text")
       .attr("x", d => d.x)
       .attr("y", d => d.y + mainRadius + mainTextOffset)
       .text(d => d.title);
 
     // Draw sub nodes.
-    g.selectAll("circle.sub")
+    g.selectAll("circle.sub-node")
       .data(subNodes)
       .enter()
       .append("circle")
@@ -574,13 +403,13 @@
       .data(subNodes)
       .enter()
       .append("text")
-      .attr("class", "node-text")
+      .attr("class", "node-text sub-text")
       .attr("x", d => d.x)
       .attr("y", d => d.y + subRadius + subTextOffset)
       .text(d => d.title);
 
     // Draw sub-sub nodes.
-    g.selectAll("circle.subsub")
+    g.selectAll("circle.sub-sub-node")
       .data(subSubNodes)
       .enter()
       .append("circle")
@@ -593,14 +422,18 @@
       .data(subSubNodes)
       .enter()
       .append("text")
-      .attr("class", "node-text")
+      .attr("class", "node-text subsub-text")
       .attr("x", d => d.x)
       .attr("y", d => d.y + subSubRadius + subSubTextOffset)
       .text(d => d.title);
 
     // ***********************
-    // 4. Draw the Connections
+    // 5. Define Dynamic Connections Based on Detail Level
     // ***********************
+    // Global variable to track the current detail level (0 = only main nodes)
+    let currentDetailLevel = 0; // 0: main, 1: main+sub, 2: main+sub+subsub
+
+    // Helper function to compute endpoints between nodes.
     function getRadius(node) {
       if (node.type === "main") return mainRadius;
       else if (node.type === "sub") return subRadius;
@@ -620,22 +453,88 @@
       return { startX, startY, endX, endY };
     }
 
-    connections.forEach(conn => {
-      const sourceNode = nodeById[conn.source];
-      const targetNode = nodeById[conn.target];
-      if (sourceNode && targetNode) {
-        const { startX, startY, endX, endY } = computeConnectionEndpoints(sourceNode, targetNode);
-        g.append("line")
-         .attr("class", "connector")
-         .attr("x1", startX)
-         .attr("y1", startY)
-         .attr("x2", endX)
-         .attr("y2", endY);
+    // Draw a single connector line.
+    function drawConnection(source, target) {
+      const { startX, startY, endX, endY } = computeConnectionEndpoints(source, target);
+      g.append("line")
+       .attr("class", "connector")
+       .attr("x1", startX)
+       .attr("y1", startY)
+       .attr("x2", endX)
+       .attr("y2", endY);
+    }
+
+    // Update connections based on current detail level.
+    function updateConnections() {
+      // Remove existing connection lines.
+      g.selectAll("line.connector").remove();
+      // For each sequential pair of main nodes…
+      for (let i = 0; i < mainNodes.length - 1; i++) {
+        let source = mainNodes[i];
+        let target = mainNodes[i+1];
+        if (currentDetailLevel === 0) {
+          // Direct connection from main node to main node.
+          drawConnection(source, target);
+        } else if (currentDetailLevel === 1) {
+          const subs = getSubsForMain(source.id);
+          if (subs.length > 0) {
+            // For each sub node, connect main->sub and sub->next main.
+            subs.forEach(sub => {
+              drawConnection(source, sub);
+              drawConnection(sub, target);
+            });
+          } else {
+            drawConnection(source, target);
+          }
+        } else if (currentDetailLevel >= 2) {
+          const subs = getSubsForMain(source.id);
+          if (subs.length > 0) {
+            subs.forEach(sub => {
+              const subsubs = getSubSubsForSub(sub.id);
+              // Always connect main->sub.
+              drawConnection(source, sub);
+              if (subsubs.length > 0) {
+                // For each sub-sub node, route connection: sub->subsub then subsub->next main.
+                subsubs.forEach(subsub => {
+                  drawConnection(sub, subsub);
+                  drawConnection(subsub, target);
+                });
+              } else {
+                drawConnection(sub, target);
+              }
+            });
+          } else {
+            drawConnection(source, target);
+          }
+        }
       }
-    });
+    }
 
     // ***********************
-    // 5. Add Tooltip Functionality
+    // 6. Update Node Visibility Based on Detail Level
+    // ***********************
+    function updateNodeVisibility() {
+      // Always show main nodes.
+      d3.selectAll("circle.main-node, text.main-text")
+        .style("display", "block");
+      // Show sub nodes only if detail level >= 1.
+      d3.selectAll("circle.sub-node, text.sub-text")
+        .style("display", currentDetailLevel >= 1 ? "block" : "none");
+      // Show sub-sub nodes only if detail level >= 2.
+      d3.selectAll("circle.sub-sub-node, text.subsub-text")
+        .style("display", currentDetailLevel >= 2 ? "block" : "none");
+    }
+
+    // ***********************
+    // 7. Update Entire Diagram Based on Detail Level
+    // ***********************
+    function updateDiagram() {
+      updateNodeVisibility();
+      updateConnections();
+    }
+
+    // ***********************
+    // 8. Add Tooltip Functionality
     // ***********************
     const tooltip = d3.select("#tooltip");
     g.selectAll("circle.main-node, circle.sub-node, circle.sub-sub-node")
@@ -654,7 +553,7 @@
       });
 
     // ***********************
-    // 6. Enable Pan and Zoom
+    // 9. Enable Pan and Zoom
     // ***********************
     const zoomBehavior = d3.zoom()
                            .on("zoom", event => {
@@ -665,7 +564,7 @@
        .on("end.zoom", () => svg.style("cursor", "grab"));
 
     // ***********************
-    // 7. Zoom to Fit Functionality
+    // 10. Zoom to Fit Functionality
     // ***********************
     function zoomToFit() {
       const bounds = g.node().getBBox();
@@ -688,22 +587,29 @@
     d3.select("#resetZoom").on("click", zoomToFit);
 
     // ***********************
-    // 8. Add Legend (Key) for Role Colors
+    // 11. Bind Expand/Collapse Buttons
+    // ***********************
+    d3.select("#expandButton").on("click", () => {
+      // Increase detail level (limit max detail level to 2 for now)
+      currentDetailLevel = Math.min(currentDetailLevel + 1, 2);
+      updateDiagram();
+    });
+    d3.select("#collapseButton").on("click", () => {
+      // Decrease detail level (minimum 0)
+      currentDetailLevel = Math.max(currentDetailLevel - 1, 0);
+      updateDiagram();
+    });
+
+    // Initial diagram update.
+    updateDiagram();
+
+    // ***********************
+    // 12. Add Legend (Key) for Role Colors
     // ***********************
     // Append the legend outside the zoomable group so it stays fixed.
     const legend = svg.append("g")
                       .attr("class", "legend")
                       .attr("transform", "translate(20,20)");
-    // Optional: add a semi-transparent background rectangle for the legend.
-    legend.append("rect")
-          .attr("x", -10)
-          .attr("y", -10)
-          .attr("width", 220)
-          .attr("height", 110)
-          .attr("fill", "rgba(0, 0, 0, 0.6)")
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 1);
-    
     const legendData = [
       { role: "ai", label: "AI-driven Task", color: "#4CAF50" },
       { role: "human", label: "Human-required Task", color: "#F44336" },
